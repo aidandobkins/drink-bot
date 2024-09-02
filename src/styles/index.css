@@ -1,0 +1,12 @@
+@import url('./colors.css');
+
+body {
+    margin: 0;
+    font-family: 'Quicksand', Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--backgroundColor);
+    background-repeat: repeat-x;
+    background-size: 14%;
+    background-position-y: 40px;
+}
