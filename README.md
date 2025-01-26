@@ -1,6 +1,7 @@
 # Drink Bot (React)
 
 To run this on the server, you have to make sure the port is set to what you want in .env, and create the .env file in the root directory.
+Make sure you have node 18 installed
 Run "sudo npm install" to install dependencies
 Run "sudo npm run frontendbuild" in the root folder first.
 Then run "sudo pm2 start index.js --name DrinkBot" in the root folder.
