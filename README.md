@@ -4,7 +4,7 @@ To run this on the server, you have to make sure the BACKENDPORT is set to what 
 - Make sure you have node 18 installed
 - Run "sudo npm install" to install dependencies
 - Run "sudo npm run buildfrontend" in the root folder first.
-- Might need to start a mongodb first on the server.
+- Might need to start a mongodb first on the server. Use these instructions if so: https://www.mongodb.com/developer/products/mongodb/mongodb-on-raspberry-pi/
 - Then run "sudo pm2 start index.js --name DrinkBot" in the root folder. Or "npm run backend" if you want to see debug.
 
 To run locally to test and develop, you need to do the above (but without sudo if you aren't on linux)
