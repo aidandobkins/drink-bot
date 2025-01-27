@@ -42,7 +42,7 @@ function executeCommand(command) {
 async function initializePumps() {
     try {
         await Promise.all(
-            PUMP_PINS.map(pin => executeCommand(`raspi-gpio set ${pin} op dl`))
+            PUMP_PINS.map(pin => executeCommand(`raspi-gpio set ${pin} op dh`))
         );
         console.log('All pumps initialized to OFF.');
     } catch (error) {
@@ -54,7 +54,7 @@ async function initializePumps() {
 // Turn a pump ON
 async function turnPumpOn(pin) {
     try {
-        await executeCommand(`raspi-gpio set ${pin} op dh`);
+        await executeCommand(`raspi-gpio set ${pin} op dl`);
         console.log(`Pump on pin ${pin} turned ON.`);
     } catch (error) {
         console.error(`Error turning on pump on pin ${pin}:`, error.message);
@@ -65,7 +65,7 @@ async function turnPumpOn(pin) {
 // Turn a pump OFF
 async function turnPumpOff(pin) {
     try {
-        await executeCommand(`raspi-gpio set ${pin} op dl`);
+        await executeCommand(`raspi-gpio set ${pin} op dh`);
         console.log(`Pump on pin ${pin} turned OFF.`);
     } catch (error) {
         console.error(`Error turning off pump on pin ${pin}:`, error.message);
@@ -77,7 +77,7 @@ async function turnPumpOff(pin) {
 async function CleanupPumps() {
     try {
         await Promise.all(
-            PUMP_PINS.map(pin => executeCommand(`raspi-gpio set ${pin} op dl`))
+            PUMP_PINS.map(pin => executeCommand(`raspi-gpio set ${pin} op dh`))
         );
         console.log('All pumps turned OFF during cleanup.');
     } catch (error) {
