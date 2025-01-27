@@ -2,7 +2,6 @@ let gpio;
 
 if (process.platform === 'linux') {
     gpio = require('rpi-gpio');
-    gpio.setMode(gpio.MODE_BCM);
 } else {
     // Mock gpio class for non-Linux environments
     console.log('Running in a non-Linux environment. Using mock GPIO.');
@@ -25,9 +24,9 @@ if (process.platform === 'linux') {
 const OZTIME = 16.0; // Amount of time it takes for one ounce to dispense in seconds
 const PURGETIME = 10.0; // Amount of time to run the pumps when purging in seconds
 const PRIMETIME = 5.1; // Amount of time to run the pumps when priming in seconds
-const PUMP_PINS = [17, 27, 22, 10, 9, 11];
+const PUMP_PINS = [11, 13, 15, 19, 21, 23];
 const PUMPS = PUMP_PINS.map(pin => ({ pin, isOn: false }));
-const MAKINGLIGHTPIN = 16;
+const MAKINGLIGHTPIN = 36;
 
 class Drink {
     constructor(DrinkInfoList, _id, Name = "", ImagePath = "") {
