@@ -1,32 +1,30 @@
-let gpio;
+let Gpio;
 
 if (process.platform === 'linux') {
-    gpio = require('rpi-gpio');
+    Gpio = require('pigpio').Gpio;
 } else {
-    // Mock gpio class for non-Linux environments
+    // Mock Gpio class for non-Linux environments
     console.log('Running in a non-Linux environment. Using mock GPIO.');
-    gpio = {
-        setup: (pin, direction, callback) => {
-            console.log(`Mock setup for pin ${pin} with direction ${direction}`);
-            if (callback) callback(null);
-        },
-        write: (pin, value, callback) => {
-            console.log(`Mock write to pin ${pin}: ${value}`);
-            if (callback) callback(null);
-        },
-        destroy: (callback) => {
-            console.log('Mock GPIO cleanup');
-            if (callback) callback(null);
-        },
+    Gpio = class {
+        constructor(pin, options) {
+            this.pin = pin;
+            this.state = 0; // 0 for OFF, 1 for ON
+            console.log(`Mock GPIO pin ${pin} initialized with options:`, options);
+        }
+
+        digitalWrite(value) {
+            this.state = value;
+            console.log(`Mock GPIO pin ${this.pin} set to ${value === 1 ? 'ON' : 'OFF'}`);
+        }
     };
 }
 
 const OZTIME = 16.0; // Amount of time it takes for one ounce to dispense in seconds
 const PURGETIME = 10.0; // Amount of time to run the pumps when purging in seconds
 const PRIMETIME = 5.1; // Amount of time to run the pumps when priming in seconds
-const PUMP_PINS = [11, 13, 15, 19, 21, 23];
-const PUMPS = PUMP_PINS.map(pin => ({ pin, isOn: false }));
-const MAKINGLIGHTPIN = 36;
+const PUMP_PINS = [17, 27, 22, 10, 9, 11]; // BCM pin numbers
+const PUMPS = PUMP_PINS.map(pin => new Gpio(pin, { mode: Gpio.OUTPUT }));
+const MAKINGLIGHTPIN = 16; // BCM pin number for the making light
 
 class Drink {
     constructor(DrinkInfoList, _id, Name = "", ImagePath = "") {
@@ -44,46 +42,25 @@ class DrinkInfo {
     }
 }
 
-function setupPins() {
-    return Promise.all(
-        PUMPS.map(pump =>
-            new Promise((resolve, reject) => {
-                gpio.setup(pump.pin, gpio.DIR_OUT, err => {
-                    if (err) {
-                        console.error(`Error setting up pin ${pump.pin}:`, err);
-                        return reject(err);
-                    }
-                    console.log(`Pin ${pump.pin} set up successfully.`);
-                    resolve();
-                });
-            })
-        )
-    );
-}
-
-function turnPumpOn(pump) {
+async function turnPumpOn(pump) {
     return new Promise((resolve, reject) => {
-        gpio.write(pump.pin, true, err => {
-            if (err) {
-                console.error(`Error turning on pin ${pump.pin}:`, err);
-                return reject(err);
-            }
-            pump.isOn = true;
+        try {
+            pump.digitalWrite(1); // Turn the pump on
             resolve();
-        });
+        } catch (error) {
+            reject(`Error turning on pump: ${error.message}`);
+        }
     });
 }
 
-function turnPumpOff(pump) {
+async function turnPumpOff(pump) {
     return new Promise((resolve, reject) => {
-        gpio.write(pump.pin, false, err => {
-            if (err) {
-                console.error(`Error turning off pin ${pump.pin}:`, err);
-                return reject(err);
-            }
-            pump.isOn = false;
+        try {
+            pump.digitalWrite(0); // Turn the pump off
             resolve();
-        });
+        } catch (error) {
+            reject(`Error turning off pump: ${error.message}`);
+        }
     });
 }
 
@@ -95,8 +72,8 @@ async function DispenseDrink(drink, drinkLabels) {
             await turnPumpOn(drinkInfo.pump);
 
             const timeToDispense = drinkInfo.value * OZTIME * 1000; // Convert to milliseconds
-
             await new Promise(resolve => setTimeout(resolve, timeToDispense));
+
             await turnPumpOff(drinkInfo.pump);
         });
 
@@ -189,10 +166,5 @@ function assignPumpsToDrinks(drink, drinkLabels) {
         };
     });
 }
-
-// Set up pins before exporting functions
-setupPins()
-    .then(() => console.log("All pins set up successfully."))
-    .catch(err => console.error("Error setting up pins:", err));
 
 module.exports = { Drink, DrinkInfo, PrimeAllPumps, PurgeAllPumps, DispenseDrink, PrimePump, PurgePump };
