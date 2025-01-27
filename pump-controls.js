@@ -2,6 +2,7 @@ let gpio;
 
 if (process.platform === 'linux') {
     gpio = require('rpi-gpio');
+    gpio.setMode(gpio.MODE_BCM);
 } else {
     // Mock gpio class for non-Linux environments
     console.log('Running in a non-Linux environment. Using mock GPIO.');
