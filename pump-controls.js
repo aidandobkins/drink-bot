@@ -73,6 +73,19 @@ async function turnPumpOff(pin) {
     }
 }
 
+// Cleanup GPIO pins (set all pins to LOW)
+async function CleanupPumps() {
+    try {
+        await Promise.all(
+            PUMP_PINS.map(pin => executeCommand(`raspi-gpio set ${pin} op dl`))
+        );
+        console.log('All pumps turned OFF during cleanup.');
+    } catch (error) {
+        console.error('Error during pump cleanup:', error.message);
+        throw error;
+    }
+}
+
 // Dispense a drink
 async function DispenseDrink(drink, drinkLabels) {
     try {
@@ -195,6 +208,7 @@ function assignPumpsToDrinks(drink, drinkLabels) {
 module.exports = {
     Drink, DrinkInfo,
     initializePumps,
+    CleanupPumps,
     turnPumpOn,
     turnPumpOff,
     DispenseDrink,

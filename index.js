@@ -1,4 +1,4 @@
-const { Drink, DrinkInfo, PrimeAllPumps, PurgeAllPumps, DispenseDrink, PrimePump, PurgePump } = require('./pump-controls');
+const { Drink, DrinkInfo, PrimeAllPumps, PurgeAllPumps, DispenseDrink, PrimePump, PurgePump, CleanupPumps } = require('./pump-controls');
 const express = require('express');
 var bodyParser = require('body-parser');
 require('dotenv').config();
@@ -306,6 +306,19 @@ app.post('/api/favoriteDrink', jsonParser, async (req, res) => {
 //         res.sendFile(path.join(__dirname, `/build/index.html`));
 //     });
 // }
+
+// Handle application exit
+process.on('SIGINT', async () => {
+    console.log('Gracefully shutting down...');
+    await CleanupPumps(); // Turn all pumps OFF
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    console.log('Gracefully shutting down...');
+    await CleanupPumps(); // Turn all pumps OFF
+    process.exit(0);
+});
 
 app.listen(PORT, () => {
     console.log(`Server listening on ${PORT}`);
