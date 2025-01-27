@@ -38,19 +38,6 @@ function executeCommand(command) {
     });
 }
 
-// Initialize all pumps (set all pins to output and drive low)
-async function initializePumps() {
-    try {
-        await Promise.all(
-            PUMP_PINS.map(pin => executeCommand(`raspi-gpio set ${pin} op dh`))
-        );
-        console.log('All pumps initialized to OFF.');
-    } catch (error) {
-        console.error('Error initializing pumps:', error.message);
-        throw error;
-    }
-}
-
 // Turn a pump ON
 async function turnPumpOn(pin) {
     try {
@@ -196,18 +183,8 @@ function assignPumpsToDrinks(drink, drinkLabels) {
     });
 }
 
-// Initialize pins on startup
-(async () => {
-    try {
-        await initializePumps();
-    } catch (error) {
-        console.error('Error during pump initialization:', error.message);
-    }
-})();
-
 module.exports = {
     Drink, DrinkInfo,
-    initializePumps,
     CleanupPumps,
     turnPumpOn,
     turnPumpOff,
