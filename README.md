@@ -1,7 +1,7 @@
 # Drink Bot (React)
 
 To run this on the server, you have to make sure the BACKENDPORT is set to what you want in .env, and create the .env file in the root directory.
-- Make sure you have node 18 installed
+- Make sure you have node 18 installed, then make sure you can use it with sudo by doing this `sudo ln -s "$NVM_DIR/versions/node/v18.20.6/bin/node" "/usr/local/bin/node"` `sudo ln -s "$NVM_DIR/versions/node/v18.20.6/bin/npm" "/usr/local/bin/npm"`
 - Run "sudo npm install" to install dependencies
 - Run "sudo npm run buildfrontend" in the root folder first.
 - Might need to start a mongodb first on the server. Use these instructions if so: https://www.mongodb.com/developer/products/mongodb/mongodb-on-raspberry-pi/
