@@ -1,27 +1,31 @@
-let Gpio;
+let gpio;
+
 if (process.platform === 'linux') {
-    Gpio = require('onoff').Gpio;
+    gpio = require('rpi-gpio');
 } else {
-    // Mock Gpio class for non-Linux environments
-    Gpio = class {
-        constructor(pin, direction) {
-            console.log(`Mock GPIO created for pin ${pin} with direction ${direction}`);
-        }
-        writeSync(value) {
-            console.log(`Mock writeSync called with value ${value}`);
-        }
-        unexport() {
-            console.log('Mock unexport called');
-        }
+    // Mock gpio class for non-Linux environments
+    console.log('Running in a non-Linux environment. Using mock GPIO.');
+    gpio = {
+        setup: (pin, direction, callback) => {
+            console.log(`Mock setup for pin ${pin} with direction ${direction}`);
+            if (callback) callback(null);
+        },
+        write: (pin, value, callback) => {
+            console.log(`Mock write to pin ${pin}: ${value}`);
+            if (callback) callback(null);
+        },
+        destroy: (callback) => {
+            console.log('Mock GPIO cleanup');
+            if (callback) callback(null);
+        },
     };
 }
 
-const OZTIME = 16.0; //amount of time it takes for one ounce to dispense in seconds
-const PURGETIME = 10.0; //amount of time to run the pumps when purging in seconds
-const PRIMETIME = 5.1; //amount of time to run the pumps when priming in seconds
-const PUMPS = [new Gpio(17, 'out'), new Gpio(27, 'out'), 
-               new Gpio(22, 'out'), new Gpio(10, 'out'), 
-               new Gpio(9, 'out'), new Gpio(11, 'out')];
+const OZTIME = 16.0; // Amount of time it takes for one ounce to dispense in seconds
+const PURGETIME = 10.0; // Amount of time to run the pumps when purging in seconds
+const PRIMETIME = 5.1; // Amount of time to run the pumps when priming in seconds
+const PUMP_PINS = [17, 27, 22, 10, 9, 11];
+const PUMPS = PUMP_PINS.map(pin => ({ pin, isOn: false }));
 const MAKINGLIGHTPIN = 16;
 
 class Drink {
@@ -40,28 +44,62 @@ class DrinkInfo {
     }
 }
 
+function setupPins() {
+    return Promise.all(
+        PUMPS.map(pump =>
+            new Promise((resolve, reject) => {
+                gpio.setup(pump.pin, gpio.DIR_OUT, err => {
+                    if (err) {
+                        console.error(`Error setting up pin ${pump.pin}:`, err);
+                        return reject(err);
+                    }
+                    console.log(`Pin ${pump.pin} set up successfully.`);
+                    resolve();
+                });
+            })
+        )
+    );
+}
+
+function turnPumpOn(pump) {
+    return new Promise((resolve, reject) => {
+        gpio.write(pump.pin, true, err => {
+            if (err) {
+                console.error(`Error turning on pin ${pump.pin}:`, err);
+                return reject(err);
+            }
+            pump.isOn = true;
+            resolve();
+        });
+    });
+}
+
+function turnPumpOff(pump) {
+    return new Promise((resolve, reject) => {
+        gpio.write(pump.pin, false, err => {
+            if (err) {
+                console.error(`Error turning off pin ${pump.pin}:`, err);
+                return reject(err);
+            }
+            pump.isOn = false;
+            resolve();
+        });
+    });
+}
+
 async function DispenseDrink(drink, drinkLabels) {
     try {
         const drinkInfoListWithPumps = assignPumpsToDrinks(drink, drinkLabels);
 
-        // Create an array of promises, one for each pump operation
-        const pumpPromises = drinkInfoListWithPumps.map(drinkInfo => {
-            return new Promise((resolve) => {
-                // Turn on the pump
-                drinkInfo.pump.writeSync(1);
+        const pumpPromises = drinkInfoListWithPumps.map(async drinkInfo => {
+            await turnPumpOn(drinkInfo.pump);
 
-                // Calculate the time to keep the pump on
-                const timeToDispense = drinkInfo.value * OZTIME * 1000; // Convert to milliseconds
+            const timeToDispense = drinkInfo.value * OZTIME * 1000; // Convert to milliseconds
 
-                // Turn off the pump after the calculated time
-                setTimeout(() => {
-                    drinkInfo.pump.writeSync(0);
-                    resolve(); // Resolve the promise once the pump is turned off
-                }, timeToDispense);
-            });
+            await new Promise(resolve => setTimeout(resolve, timeToDispense));
+            await turnPumpOff(drinkInfo.pump);
         });
 
-        // Wait for all pumps to finish dispensing
         await Promise.all(pumpPromises);
     } catch (error) {
         console.error(error.message);
@@ -71,22 +109,13 @@ async function DispenseDrink(drink, drinkLabels) {
 
 async function PrimeAllPumps() {
     try {
-        // Create an array of promises, one for each pump operation
-        const pumpPromises = PUMPS.map(pump => {
-            return new Promise((resolve) => {
-                // Turn on the pump
-                pump.writeSync(1);
-
-                // Turn off the pump after the PRIMETIME duration
-                setTimeout(() => {
-                    pump.writeSync(0);
-                    resolve(); // Resolve the promise once the pump is turned off
-                }, PRIMETIME * 1000); // Convert PRIMETIME to milliseconds
-            });
-        });
-
-        // Wait for all pumps to finish priming
-        await Promise.all(pumpPromises);
+        await Promise.all(
+            PUMPS.map(async pump => {
+                await turnPumpOn(pump);
+                await new Promise(resolve => setTimeout(resolve, PRIMETIME * 1000));
+                await turnPumpOff(pump);
+            })
+        );
         console.log("Pumps primed successfully!");
     } catch (error) {
         console.error("Error priming pumps:", error.message);
@@ -96,22 +125,13 @@ async function PrimeAllPumps() {
 
 async function PurgeAllPumps() {
     try {
-        // Create an array of promises, one for each pump operation
-        const pumpPromises = PUMPS.map(pump => {
-            return new Promise((resolve) => {
-                // Turn on the pump
-                pump.writeSync(1);
-
-                // Turn off the pump after the PURGETIME duration
-                setTimeout(() => {
-                    pump.writeSync(0);
-                    resolve(); // Resolve the promise once the pump is turned off
-                }, PURGETIME * 1000); // Convert PURGETIME to milliseconds
-            });
-        });
-
-        // Wait for all pumps to finish purging
-        await Promise.all(pumpPromises);
+        await Promise.all(
+            PUMPS.map(async pump => {
+                await turnPumpOn(pump);
+                await new Promise(resolve => setTimeout(resolve, PURGETIME * 1000));
+                await turnPumpOff(pump);
+            })
+        );
         console.log("Pumps purged successfully!");
     } catch (error) {
         console.error("Error purging pumps:", error.message);
@@ -126,18 +146,9 @@ async function PrimePump(pumpIndex) {
         }
 
         const pump = PUMPS[pumpIndex];
-        
-        // Turn on the pump
-        pump.writeSync(1);
-
-        // Turn off the pump after the PRIMETIME duration
-        await new Promise(resolve => {
-            setTimeout(() => {
-                pump.writeSync(0);
-                resolve();
-            }, PRIMETIME * 1000); // Convert PRIMETIME to milliseconds
-        });
-
+        await turnPumpOn(pump);
+        await new Promise(resolve => setTimeout(resolve, PRIMETIME * 1000));
+        await turnPumpOff(pump);
         console.log(`Pump ${pumpIndex} primed successfully!`);
     } catch (error) {
         console.error(`Error priming pump ${pumpIndex}:`, error.message);
@@ -152,18 +163,9 @@ async function PurgePump(pumpIndex) {
         }
 
         const pump = PUMPS[pumpIndex];
-        
-        // Turn on the pump
-        pump.writeSync(1);
-
-        // Turn off the pump after the PURGETIME duration
-        await new Promise(resolve => {
-            setTimeout(() => {
-                pump.writeSync(0);
-                resolve();
-            }, PURGETIME * 1000); // Convert PURGETIME to milliseconds
-        });
-
+        await turnPumpOn(pump);
+        await new Promise(resolve => setTimeout(resolve, PURGETIME * 1000));
+        await turnPumpOff(pump);
         console.log(`Pump ${pumpIndex} purged successfully!`);
     } catch (error) {
         console.error(`Error purging pump ${pumpIndex}:`, error.message);
@@ -172,22 +174,25 @@ async function PurgePump(pumpIndex) {
 }
 
 function assignPumpsToDrinks(drink, drinkLabels) {
-    // Check if all DrinkInfo labels exist in drinkLabels
     for (const drinkInfo of drink.DrinkInfoList) {
         if (!drinkLabels.includes(drinkInfo.label)) {
             throw new Error(`Label "${drinkInfo.label}" not found in drinkLabels.`);
         }
     }
 
-    // Assign pins based on matching labels
     return drink.DrinkInfoList.map(drinkInfo => {
         const labelIndex = drinkLabels.indexOf(drinkInfo.label);
         return {
             label: drinkInfo.label,
             value: drinkInfo.value,
-            pump: PUMPS[labelIndex]  // Set the pump based on the index of the label
+            pump: PUMPS[labelIndex]
         };
     });
 }
+
+// Set up pins before exporting functions
+setupPins()
+    .then(() => console.log("All pins set up successfully."))
+    .catch(err => console.error("Error setting up pins:", err));
 
 module.exports = { Drink, DrinkInfo, PrimeAllPumps, PurgeAllPumps, DispenseDrink, PrimePump, PurgePump };
