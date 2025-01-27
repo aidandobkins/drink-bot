@@ -23,9 +23,9 @@ const OZTIME = 16.0; // Amount of time it takes for one ounce to dispense in sec
 const PURGETIME = 10.0; // Amount of time to run the pumps when purging in seconds
 const PRIMETIME = 5.1; // Amount of time to run the pumps when priming in seconds
 const PUMP_PINS = [17, 27, 22, 10, 9, 11]; // BCM pin numbers
-// Initialize pins and immediately set them to LOW (OFF)
+// Initialize pins with pull-down resistor and set to LOW
 const PUMPS = PUMP_PINS.map(pin => {
-    const gpioPin = new Gpio(pin, { mode: Gpio.OUTPUT });
+    const gpioPin = new Gpio(pin, { mode: Gpio.OUTPUT, pullUpDown: Gpio.PUD_DOWN }); // Pull-down resistor
     gpioPin.digitalWrite(0); // Ensure the pin starts OFF
     return gpioPin;
 });
